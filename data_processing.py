@@ -3,10 +3,19 @@ import pandas as pd
 
 # Define the data directory and output file path
 input_dir = "data/viirs-snpp"
-output_file = "data/processed/all_processed_data.csv"
+output_file = "data/processed/netherlands_data.csv"
 os.makedirs(os.path.dirname(output_file), exist_ok=True)  # Ensure the output directory exists
 
-def process_file(file_path, country_name):
+# Define the updated header for the output file
+HEADER = [
+    "latitude", "longitude", "bright_ti4", "scan", "track", "mm_dd",
+    "acq_time", "confidence", "bright_ti5", "frp", "daynight", "type"
+]
+
+# Columns to validate as numeric
+NUMERIC_COLUMNS = ["latitude", "longitude", "bright_ti4", "bright_ti5", "frp"]
+
+def process_file(file_path):
     """
     Process a single file: clean, filter, and prepare the data.
     """
@@ -23,40 +32,48 @@ def process_file(file_path, country_name):
     data['latitude'] = data['latitude'].round(2)
     data['longitude'] = data['longitude'].round(2)
     
-    # Drop the 'satellite' column
-    if 'satellite' in data.columns:
-        data.drop(columns=['satellite'], inplace=True)
+    # Convert numerical columns to numeric, coercing errors to NaN
+    for col in NUMERIC_COLUMNS:
+        data[col] = pd.to_numeric(data[col], errors='coerce')
     
-    # Add the country name column
-    data['country'] = country_name
+    # Remove rows with NaN in any of the numerical columns
+    data.dropna(subset=NUMERIC_COLUMNS, inplace=True)
     
+    # Transform 'acq_date' to 'mm_dd' (removing the year)
+    data['mm_dd'] = pd.to_datetime(data['acq_date']).dt.strftime('%m_%d')
+    data.drop(columns=['acq_date'], inplace=True)
+
+    # Drop unnecessary columns
+    columns_to_drop = ['satellite', 'instrument']
+    data.drop(columns=[col for col in columns_to_drop if col in data.columns], inplace=True)
+
+    # Reorder columns to match the HEADER
+    data = data[HEADER]
+
     return data
 
-def process_and_append_all_files(input_dir, output_file):
+def process_and_append_netherlands_files(input_dir, output_file):
     """
-    Process all files and append the results to a single CSV file.
+    Process only Netherlands files and append the results to a single CSV file.
     """
-    # Initialize the output file if it doesn't exist
-    if not os.path.exists(output_file):
-        pd.DataFrame().to_csv(output_file, index=False)  # Create an empty CSV file
-    
+    # Empty the output file and write the header
+    with open(output_file, 'w') as f:
+        f.write(",".join(HEADER) + "\n")  # Write the header line
+
     # Walk through the input directory to find files
     for year_dir in os.listdir(input_dir):
         year_path = os.path.join(input_dir, year_dir)
         if os.path.isdir(year_path):  # Ensure it's a directory
             for file_name in os.listdir(year_path):
-                if file_name.endswith(".csv"):  # Only process CSV files
+                if file_name.endswith(".csv") and "Netherlands" in file_name:  # Only process Netherlands files
                     input_file = os.path.join(year_path, file_name)
                     
-                    # Extract the country name from the file name
-                    country_name = file_name.split('_')[-1].split('.')[0]  # Extract the part after the last underscore and before the file extension
-                    
                     # Process the file
-                    processed_data = process_file(input_file, country_name)
+                    processed_data = process_file(input_file)
                     
                     # Append the processed data to the output file
-                    processed_data.to_csv(output_file, mode='a', header=not os.path.exists(output_file), index=False)
-                    print(f"Processed and appended: {input_file} with country: {country_name}")
+                    processed_data.to_csv(output_file, mode='a', header=False, index=False)
+                    print(f"Processed and appended: {input_file}")
 
 # Run the script
-process_and_append_all_files(input_dir, output_file)
+process_and_append_netherlands_files(input_dir, output_file)
