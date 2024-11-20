@@ -1,79 +1,67 @@
-import os
 import pandas as pd
+import numpy as np
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.model_selection import train_test_split
 
-# Define the data directory and output file path
-input_dir = "data/viirs-snpp"
-output_file = "data/processed/netherlands_data.csv"
-os.makedirs(os.path.dirname(output_file), exist_ok=True)  # Ensure the output directory exists
+# Load the dataset
+print("Loading the dataset...")
+data = pd.read_csv("forestfires.csv")
+print(f"Dataset loaded with {data.shape[0]} rows and {data.shape[1]} columns.")
 
-# Define the updated header for the output file
-HEADER = [
-    "latitude", "longitude", "bright_ti4", "scan", "track", "mm_dd",
-    "acq_time", "confidence", "bright_ti5", "frp", "daynight", "type"
-]
+# Display the first few rows of the dataset
+print("\nInitial Dataset Sample:")
+print(data.head())
 
-# Columns to validate as numeric
-NUMERIC_COLUMNS = ["latitude", "longitude", "bright_ti4", "bright_ti5", "frp"]
+# Step 1: Transform 'area' into binary classification
+print("\nTransforming 'area' column into binary classification...")
+data['area'] = data['area'].apply(lambda x: 1 if x > 0 else 0)
+print(f"Class distribution after transformation:\n{data['area'].value_counts()}")
 
-def process_file(file_path):
-    """
-    Process a single file: clean, filter, and prepare the data.
-    """
-    # Load the CSV file
-    data = pd.read_csv(file_path)
-    
-    # Remove rows with null values
-    data.dropna(inplace=True)
-    
-    # Filter out rows with "l" confidence
-    data = data[data['confidence'] != 'l']
-    
-    # Round latitude and longitude to 0.01
-    data['latitude'] = data['latitude'].round(2)
-    data['longitude'] = data['longitude'].round(2)
-    
-    # Convert numerical columns to numeric, coercing errors to NaN
-    for col in NUMERIC_COLUMNS:
-        data[col] = pd.to_numeric(data[col], errors='coerce')
-    
-    # Remove rows with NaN in any of the numerical columns
-    data.dropna(subset=NUMERIC_COLUMNS, inplace=True)
-    
-    # Transform 'acq_date' to 'mm_dd' (removing the year)
-    data['mm_dd'] = pd.to_datetime(data['acq_date']).dt.strftime('%m_%d')
-    data.drop(columns=['acq_date'], inplace=True)
+# Step 2: Handle outliers using the IQR method
+print("\nHandling outliers using the IQR method...")
+numerical_columns = ['FFMC', 'DMC', 'DC', 'ISI', 'temp', 'RH', 'wind', 'rain']
+for col in numerical_columns:
+    Q1 = data[col].quantile(0.25)
+    Q3 = data[col].quantile(0.75)
+    IQR = Q3 - Q1
+    lower_bound = Q1 - 1.5 * IQR
+    upper_bound = Q3 + 1.5 * IQR
+    data[col] = np.clip(data[col], lower_bound, upper_bound)
+    print(f"Processed {col} - Outliers capped at bounds [{lower_bound}, {upper_bound}]")
 
-    # Drop unnecessary columns
-    columns_to_drop = ['satellite', 'instrument']
-    data.drop(columns=[col for col in columns_to_drop if col in data.columns], inplace=True)
+# Step 3: Scale numerical features
+print("\nScaling numerical features...")
+scaler = StandardScaler()
+data[numerical_columns] = scaler.fit_transform(data[numerical_columns])
+print("Numerical features scaled.")
 
-    # Reorder columns to match the HEADER
-    data = data[HEADER]
+# Step 4: Encode 'month' and 'day' with label encoding
+print("\nEncoding 'month' and 'day' columns...")
+label_encoder = LabelEncoder()
+data['month'] = label_encoder.fit_transform(data['month'])
+data['day'] = label_encoder.fit_transform(data['day'])
+print("Encoded 'month' and 'day'.")
 
-    return data
+# Step 5: Feature engineering (optional)
+print("\nFeature engineering...")
+data['temp_rain_ratio'] = data['temp'] / (data['rain'] + 1)  # Prevent division by zero
+data['wind_rain_interaction'] = data['wind'] * data['rain']
+print("Engineered new features: 'temp_rain_ratio', 'wind_rain_interaction'.")
 
-def process_and_append_netherlands_files(input_dir, output_file):
-    """
-    Process only Netherlands files and append the results to a single CSV file.
-    """
-    # Empty the output file and write the header
-    with open(output_file, 'w') as f:
-        f.write(",".join(HEADER) + "\n")  # Write the header line
+# Step 6: Split into train and test datasets
+print("\nSplitting dataset into train and test sets...")
+X = data.drop(columns=['area'])
+y = data['area']
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
 
-    # Walk through the input directory to find files
-    for year_dir in os.listdir(input_dir):
-        year_path = os.path.join(input_dir, year_dir)
-        if os.path.isdir(year_path):  # Ensure it's a directory
-            for file_name in os.listdir(year_path):
-                if file_name.endswith(".csv") and "Netherlands" in file_name:  # Only process Netherlands files
-                    input_file = os.path.join(year_path, file_name)
-                    
-                    # Process the file
-                    processed_data = process_file(input_file)
-                    
-                    # Append the processed data to the output file
-                    processed_data.to_csv(output_file, mode='a', header=False, index=False)
-                    print(f"Processed and appended: {input_file}")
+# Save the datasets
+print("\nSaving processed datasets...")
+X_train.to_csv("X_train_processed.csv", index=False)
+X_test.to_csv("X_test_processed.csv", index=False)
+y_train.to_csv("y_train_processed.csv", index=False)
+y_test.to_csv("y_test_processed.csv", index=False)
+print("Datasets saved as 'X_train_processed.csv', 'X_test_processed.csv', 'y_train_processed.csv', 'y_test_processed.csv'.")
 
-# Run the script
-process_and_append_netherlands_files(input_dir, output_file)
+# Display processed dataset sample
+print("\nProcessed Dataset Sample:")
+print(data.head())
