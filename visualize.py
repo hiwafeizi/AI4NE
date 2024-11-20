@@ -13,8 +13,8 @@ import lightgbm as lgb
 # Load the trained model and test data
 print("Loading the trained model and test data...")
 best_model = joblib.load("lightgbm_fire_model_optimized.pkl")
-X_test = pd.read_csv("X_test_processed.csv")
-y_test = pd.read_csv("y_test_processed.csv").values.ravel()
+X_test = pd.read_csv("data/X_test_processed.csv")
+y_test = pd.read_csv("data/y_test_processed.csv").values.ravel()
 
 # Step 1: Predict on the test set
 print("\nPredicting on the test set...")

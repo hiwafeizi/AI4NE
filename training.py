@@ -12,10 +12,10 @@ warnings.filterwarnings("ignore", category=UserWarning)
 
 # Step 1: Load the preprocessed training and testing datasets
 print("Loading preprocessed datasets...")
-X_train = pd.read_csv("X_train_processed.csv")
-X_test = pd.read_csv("X_test_processed.csv")
-y_train = pd.read_csv("y_train_processed.csv").values.ravel()
-y_test = pd.read_csv("y_test_processed.csv").values.ravel()
+X_train = pd.read_csv("data/X_train_processed.csv")
+X_test = pd.read_csv("data/X_test_processed.csv")
+y_train = pd.read_csv("data/y_train_processed.csv").values.ravel()
+y_test = pd.read_csv("data/y_test_processed.csv").values.ravel()
 
 # Validate data shapes
 assert X_train.shape[0] == y_train.shape[0], "Mismatch in training data and labels"
@@ -24,7 +24,7 @@ assert X_test.shape[0] == y_test.shape[0], "Mismatch in test data and labels"
 # Step 2: Define the parameter grid for Grid Search
 print("\nDefining the parameter grid for Grid Search...")
 param_grid = {
-    'num_leaves': [20, 50, 100],
+    'num_leaves': [20, 50, 100, 200, 400],
     'learning_rate': [0.005, 0.01, 0.05, 0.1],
     'max_depth': [-1, 5, 8],
     'n_estimators': [20, 50, 100],

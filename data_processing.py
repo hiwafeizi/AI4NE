@@ -5,7 +5,7 @@ from sklearn.model_selection import train_test_split
 
 # Load the dataset
 print("Loading the dataset...")
-data = pd.read_csv("forestfires.csv")
+data = pd.read_csv("data/forestfires.csv")
 print(f"Dataset loaded with {data.shape[0]} rows and {data.shape[1]} columns.")
 
 # Display the first few rows of the dataset
@@ -56,11 +56,11 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 
 # Save the datasets
 print("\nSaving processed datasets...")
-X_train.to_csv("X_train_processed.csv", index=False)
-X_test.to_csv("X_test_processed.csv", index=False)
-y_train.to_csv("y_train_processed.csv", index=False)
-y_test.to_csv("y_test_processed.csv", index=False)
-print("Datasets saved as 'X_train_processed.csv', 'X_test_processed.csv', 'y_train_processed.csv', 'y_test_processed.csv'.")
+X_train.to_csv("data/X_train_processed.csv", index=False)
+X_test.to_csv("data/X_test_processed.csv", index=False)
+y_train.to_csv("data/y_train_processed.csv", index=False)
+y_test.to_csv("data/y_test_processed.csv", index=False)
+print("Datasets saved as 'X_train_processed.csv', 'X_test_processed.csv', 'y_train_processed.csv', 'y_test_processed.csv' in data folder.")
 
 # Display processed dataset sample
 print("\nProcessed Dataset Sample:")
